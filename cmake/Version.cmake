@@ -1,0 +1,60 @@
+# tag vX.Y.Z reachable  -> X.Y.(Z + commits since the tag)
+# no tag                -> BASE_MAJOR.BASE_MINOR.(commit count - 1)
+# uncommitted changes   -> next patch number + "-dev"
+
+set(major ${BASE_MAJOR})
+set(minor ${BASE_MINOR})
+set(patch 0)
+set(commit "unknown")
+set(dirty FALSE)
+
+function(git out)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" ${ARGN}
+        WORKING_DIRECTORY "${SOURCE_DIR}"
+        OUTPUT_VARIABLE result RESULT_VARIABLE rc
+        OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(rc EQUAL 0)
+        set(${out} "${result}" PARENT_SCOPE)
+    else()
+        set(${out} "" PARENT_SCOPE)
+    endif()
+endfunction()
+
+if(GIT_EXECUTABLE)
+    git(describe describe --tags --long --match "v[0-9]*")
+    if(describe MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g[0-9a-f]+$")
+        set(major ${CMAKE_MATCH_1})
+        set(minor ${CMAKE_MATCH_2})
+        math(EXPR patch "${CMAKE_MATCH_3} + ${CMAKE_MATCH_4}")
+    else()
+        git(count rev-list --count HEAD)
+        if(count MATCHES "^[0-9]+$" AND count GREATER 0)
+            math(EXPR patch "${count} - 1")
+        endif()
+    endif()
+
+    git(hash rev-parse --short HEAD)
+    if(hash)
+        set(commit "${hash}")
+    endif()
+
+    git(status status --porcelain)
+    if(status)
+        set(dirty TRUE)
+        math(EXPR patch "${patch} + 1")
+    endif()
+endif()
+
+set(MOD_NAME          "${NAME}")
+set(MOD_DESCRIPTION   "${DESCRIPTION}")
+set(MOD_VERSION_MAJOR ${major})
+set(MOD_VERSION_MINOR ${minor})
+set(MOD_VERSION_PATCH ${patch})
+set(MOD_VERSION       "${major}.${minor}.${patch}")
+if(dirty)
+    set(MOD_VERSION "${MOD_VERSION}-dev")
+endif()
+set(MOD_COMMIT "${commit}")
+string(TIMESTAMP MOD_BUILD_TIME "%Y-%m-%d %H:%M:%S")
+
+configure_file("${INPUT}" "${OUTPUT}" @ONLY)
