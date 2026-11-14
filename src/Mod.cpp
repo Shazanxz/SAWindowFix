@@ -45,7 +45,6 @@ constexpr uint8_t kInitPresent[]  = { 0x8B, 0x0D, 0x4C, 0x7C, 0xC9, 0x00 };
 constexpr uint8_t kInitDevice[]   = { 0x89, 0x2D, 0x8C, 0x80, 0xC9, 0x00 };
 constexpr uint8_t kCameraAspect[] = { 0x74, 0x16 };
 constexpr uint8_t kPauseSounds[]  = { 0xE8, 0x86, 0xF4, 0xDB, 0xFF };
-// Only opcode + address: SA-MP anti-pause patches often rewrite the imm32 already.
 constexpr uint8_t kSetFgApp[]     = { 0xC7, 0x05, 0x1C, 0x62, 0x8D, 0x00 };
 constexpr uint8_t kOpenMenu[]     = { 0xE8, 0xF8, 0x3B, 0xDF, 0xFF };
 constexpr uint8_t kCameraResize[] = { 0xE8, 0x29, 0x1C, 0xED, 0xFF };
@@ -164,6 +163,7 @@ bool Initialize(HMODULE self) {
     logging::Info("%u patches applied", static_cast<unsigned>(sizeof(kPatches) / sizeof(kPatches[0])));
 
     window::InstallMouseScaling();
+    window::InstallMouseFocusGuard();
     logging::Info("waiting for the D3D device...");
     return true;
 }

@@ -64,7 +64,7 @@ The log records:
 The mod patches `gta_sa.exe` in memory when it loads:
 
 - **Window**: forces the D3D9 present parameters to windowed mode just before the device is created, turns the window into a borderless popup, and hooks `IDirect3DDevice9::Reset`/`Present` so it stays that way after a device reset or the ESC menu.
-- **No pause**: the focus-loss handlers in the window procedure are neutralized, so `ForegroundApp` is never cleared and the main loop keeps running.
+- **No pause**: the focus-loss handlers in the window procedure are neutralized, so `ForegroundApp` is never cleared and the main loop keeps running. Because the game keeps reading the mouse, the call from `CPad::UpdatePads` to `CPad::UpdateMouse` is wrapped: while the window is unfocused (and for a few frames after it gets focus back) the mouse state is cleared, so the camera stays still and clicks in other windows don't reach the game. This works whether the mouse comes from DirectInput;
 - **Stretched rendering**: RenderWare's client-size checks are skipped, so the backbuffer keeps the menu resolution while the window covers the monitor. Mouse messages are rescaled in the game's `PeekMessageA` import before any window procedure (SA:MP included) sees them.
 
 Each patch site is compared with the original bytes before anything is written. Calls are redirected instead of NOPed, so other mods that hook the same calls can still chain to them.

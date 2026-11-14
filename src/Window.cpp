@@ -3,6 +3,10 @@
 #include "Device.h"
 #include "Game.h"
 #include "Log.h"
+#include "Memory.h"
+
+#include <cstdint>
+#include <cstring>
 
 namespace window {
 namespace {
@@ -19,7 +23,6 @@ LRESULT CALLBACK WndProcHook(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return CallWindowProcA(g_wndProcOri, wnd, msg, wParam, lParam);
 }
 
-// Rescaling in the game's PeekMessageA import fixes the coordinates for every WndProc, SA-MP included.
 using PeekMessageA_t = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT, UINT);
 PeekMessageA_t g_peekMessageOri = nullptr;
 
@@ -40,6 +43,26 @@ void ScaleMouseMessage(MSG* msg) {
     const int x = static_cast<short>(LOWORD(msg->lParam));
     const int y = static_cast<short>(HIWORD(msg->lParam));
     msg->lParam = MAKELPARAM(MulDiv(x, bb.x, client.right), MulDiv(y, bb.y, client.bottom));
+}
+
+using UpdateMouse_t = void(__fastcall*)(void* pad, void* edx);
+UpdateMouse_t g_updateMouseOri = nullptr;
+
+void __fastcall UpdateMouseHook(void* pad, void* edx) {
+    constexpr int kGraceFrames = 3;
+    static int grace = 0;
+
+    g_updateMouseOri(pad, edx);
+
+    HWND wnd = game::Window();
+    if (wnd && GetForegroundWindow() != wnd) {
+        grace = kGraceFrames;
+    } else if (grace > 0) {
+        --grace;
+    } else {
+        return;
+    }
+    std::memset(reinterpret_cast<void*>(game::addr::NewMouseState), 0, 0x14);
 }
 
 BOOL WINAPI PeekMessageHook(LPMSG msg, HWND wnd, UINT filterMin, UINT filterMax, UINT removeMsg) {
@@ -144,6 +167,26 @@ bool InstallMouseScaling() {
     *slot = &PeekMessageHook;
     VirtualProtect(slot, sizeof(*slot), oldProtect, &oldProtect);
     logging::Info("mouse scaling installed (PeekMessageA was %s)", where);
+    return true;
+}
+
+bool InstallMouseFocusGuard() {
+    const auto site = game::addr::CallUpdateMouse;
+    const auto* code = reinterpret_cast<const uint8_t*>(site);
+    if (!mem::IsReadable(code, 5) || code[0] != 0xE8) {
+        logging::Warn("CPad::UpdateMouse call at 0x%06X was replaced; camera may move while unfocused", site);
+        return false;
+    }
+    int32_t disp;
+    std::memcpy(&disp, code + 1, sizeof(disp));
+    g_updateMouseOri = reinterpret_cast<UpdateMouse_t>(site + 5 + disp); // chain to whoever is there
+    if (!mem::WriteRel32(site, reinterpret_cast<uintptr_t>(&UpdateMouseHook), 0xE8)) {
+        logging::Warn("could not write the CPad::UpdateMouse call at 0x%06X (error %lu)", site, GetLastError());
+        return false;
+    }
+    char where[MAX_PATH + 32] = "?";
+    logging::DescribeAddress(reinterpret_cast<uintptr_t>(g_updateMouseOri), where, sizeof(where));
+    logging::Info("mouse focus guard installed (UpdateMouse was %s)", where);
     return true;
 }
 

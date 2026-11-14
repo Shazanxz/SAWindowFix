@@ -64,7 +64,7 @@ O log registra:
 O mod modifica o `gta_sa.exe` na memória ao carregar:
 
 - **Janela**: força os parâmetros de apresentação do D3D9 para modo janela logo antes de o device ser criado, transforma a janela em um popup sem bordas e hookeia `IDirect3DDevice9::Reset`/`Present` para ela continuar assim depois de um reset do device ou do menu ESC.
-- **Sem pausa**: os tratamentos de perda de foco no procedimento da janela são neutralizados, então o `ForegroundApp` nunca é zerado e o loop principal continua rodando.
+- **Sem pausa**: os tratamentos de perda de foco no procedimento da janela são neutralizados, então o `ForegroundApp` nunca é zerado e o loop principal continua rodando. Como o jogo continua lendo o mouse, a chamada de `CPad::UpdatePads` para `CPad::UpdateMouse` é interceptada: enquanto a janela está sem foco (e por alguns frames depois que o foco volta), o estado do mouse é zerado, então a câmera fica parada e cliques em outras janelas não chegam ao jogo. Isso funciona tanto com o mouse via DirectInput;
 - **Imagem esticada**: as checagens de tamanho da área cliente do RenderWare são puladas, então o backbuffer mantém a resolução do menu enquanto a janela cobre o monitor. As mensagens do mouse são reescaladas no import `PeekMessageA` do jogo, antes de qualquer procedimento de janela (incluindo o do SA:MP) recebê-las.
 
 Cada ponto modificado é comparado com os bytes originais antes de qualquer escrita. As chamadas são redirecionadas em vez de apagadas com NOP, para que outros mods que hookeiam as mesmas chamadas continuem funcionando.

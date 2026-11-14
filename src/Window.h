@@ -14,4 +14,6 @@ void HideCursor();
 
 bool InstallMouseScaling();
 
+bool InstallMouseFocusGuard();
+
 }

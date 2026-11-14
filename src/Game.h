@@ -47,6 +47,8 @@ constexpr uintptr_t RwWindowSize        = 0xC9BEE4;
 constexpr uintptr_t GetCurrentVideoMode = 0x7F2D20;
 constexpr uintptr_t VersionSignature    = 0x82457C;
 constexpr uintptr_t IatPeekMessageA     = 0x8582BC;
+constexpr uintptr_t NewMouseState       = 0xB73418; // CPad NewMouseControllerState
+constexpr uintptr_t CallUpdateMouse     = 0x541DD7; // CPad UpdateMouse, the only caller
 }
 
 namespace site {
