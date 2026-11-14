@@ -111,23 +111,23 @@ bool IsGameVersion10US() {
 }
 
 void LogEnvironment() {
-    logging::Info("%s %s (commit %s, built %s)", MOD_NAME, MOD_VERSION, MOD_COMMIT, MOD_BUILD_TIME);
+    logging::Section("environment");
 
     char exe[MAX_PATH] = "?";
     GetModuleFileNameA(nullptr, exe, MAX_PATH);
-    logging::Info("game: %s", exe);
+    logging::Info("game      %s", exe);
 
     using RtlGetVersion_t = LONG(WINAPI*)(OSVERSIONINFOW*);
     if (HMODULE ntdll = GetModuleHandleA("ntdll.dll")) {
         auto rtlGetVersion = reinterpret_cast<RtlGetVersion_t>(GetProcAddress(ntdll, "RtlGetVersion"));
         OSVERSIONINFOW os = { sizeof(os) };
         if (rtlGetVersion && rtlGetVersion(&os) == 0) {
-            logging::Info("windows: %lu.%lu build %lu", os.dwMajorVersion, os.dwMinorVersion, os.dwBuildNumber);
+            logging::Info("windows   %lu.%lu build %lu", os.dwMajorVersion, os.dwMinorVersion, os.dwBuildNumber);
         }
     }
 
     const RECT mon = window::MonitorRect();
-    logging::Info("primary monitor: %ldx%ld", mon.right - mon.left, mon.bottom - mon.top);
+    logging::Info("monitor   %ldx%ld (primary)",mon.right - mon.left, mon.bottom - mon.top);
 }
 
 }
@@ -140,6 +140,7 @@ bool Initialize(HMODULE self) {
         crash::Install();
     }
 
+    logging::Section("patches");
     if (!IsGameVersion10US()) {
         logging::Error("unsupported gta_sa.exe (only 1.0 US is supported); nothing patched");
         return false;
@@ -158,11 +159,12 @@ bool Initialize(HMODULE self) {
             logging::Error("failed to write patch at 0x%06X (%s), error %lu", p.addr, p.name, GetLastError());
             return false;
         }
-        logging::Info("patched 0x%06X  %s", p.addr, p.name);
+        logging::Info("0x%06X  %s", p.addr, p.name);
     }
+    logging::Info("%u patches applied", static_cast<unsigned>(sizeof(kPatches) / sizeof(kPatches[0])));
 
     window::InstallMouseScaling();
-    logging::Info("initialized, waiting for the D3D device");
+    logging::Info("waiting for the D3D device...");
     return true;
 }
 

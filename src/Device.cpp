@@ -65,7 +65,7 @@ void ForcePresentParams() {
         mode->flags      &= ~game::kVideoModeExclusive;
     }
 
-    logging::Info("present params: windowed, backbuffer %ldx%ld (%s), monitor %ldx%ld, vsync off", g_backBuffer.x,
+    logging::Info("present   windowed, backbuffer %ldx%ld (%s), monitor %ldx%ld, vsync off", g_backBuffer.x,
                   g_backBuffer.y, mode ? "menu resolution" : "no video mode, using monitor size",
                   mon.right - mon.left, mon.bottom - mon.top);
 }
@@ -155,16 +155,19 @@ HRESULT __stdcall ResetHook(IDirect3DDevice9* self, D3DPRESENT_PARAMETERS* pp) {
 
     static unsigned resets = 0;
     if (++resets <= 100) {
+        logging::Section("device reset");
+        char label[16];
+        std::snprintf(label, sizeof(label), "#%u", resets);
         if (SUCCEEDED(hr)) {
-            logging::Info("device reset #%u: %s, %ux%u (requested %ux%u), cooperative level %s, Reset took %lums",
-                          resets, reason ? reason : "unknown reason", pp->BackBufferWidth, pp->BackBufferHeight,
+            logging::Info("%-9s %s, %ux%u (requested %ux%u), cooperative level %s, took %lums", label,
+                          reason ? reason : "unknown reason", pp->BackBufferWidth, pp->BackBufferHeight,
                           requestedW, requestedH, CooperativeLevelName(coop), took);
         } else {
-            logging::Error("device reset #%u: %s, %ux%u failed with hr=0x%08lX, cooperative level %s", resets,
+            logging::Error("%-9s %s, %ux%u failed with hr=0x%08lX, cooperative level %s", label,
                            reason ? reason : "unknown reason", pp->BackBufferWidth, pp->BackBufferHeight, hr,
                            CooperativeLevelName(coop));
         }
-        logging::Info("  called from %s", callers[0] ? callers : "?");
+        logging::Info("          called from %s", callers[0] ? callers : "?");
     }
 
     if (SUCCEEDED(hr)) {
@@ -188,8 +191,16 @@ void TrackFrameRate() {
     const DWORD now     = GetTickCount();
     const DWORD elapsed = now - start;
     if (elapsed >= kInterval) {
-        logging::Info("%.1f fps over %.1fs (%s)", frames * 1000.0 / elapsed, elapsed / 1000.0,
-                      GetForegroundWindow() == game::Window() ? "foreground" : "background");
+        const double fps     = frames * 1000.0 / elapsed;
+        const double seconds = elapsed / 1000.0;
+        const char*  focus   = GetForegroundWindow() == game::Window() ? "foreground" : "background";
+        logging::Section("fps");
+        if (elapsed >= kInterval * 3 / 2) {
+            logging::Warn("%5.1f fps  %5.1fs   %s   (interval took %.1fs: game stalled)", fps, seconds, focus,
+                          seconds);
+        } else {
+            logging::Info("%5.1f fps  %5.1fs   %s", fps, seconds, focus);
+        }
         frames = 0;
         start  = now;
     }
@@ -199,7 +210,7 @@ HRESULT __stdcall PresentHook(IDirect3DDevice9* self, const RECT* src, const REC
                               const RGNDATA* dirty) {
     game::ClearFullScreenFlag(); // the ESC menu keeps setting it back to TRUE
     if (g_resetTick) {
-        logging::Info("  first frame %lums after the reset", GetTickCount() - g_resetTick);
+        logging::Info("          first frame %lums after the reset", GetTickCount() - g_resetTick);
         g_resetTick = 0;
     }
     window::ApplyBorderless();
@@ -235,10 +246,11 @@ void InstallHooks() {
     char present[MAX_PATH + 32] = "?";
     logging::DescribeAddress(reinterpret_cast<uintptr_t>(g_resetOri), reset, sizeof(reset));
     logging::DescribeAddress(reinterpret_cast<uintptr_t>(g_presentOri), present, sizeof(present));
-    logging::Info("device hooks installed (device %p, Reset %s, Present %s)", static_cast<void*>(dev), reset, present);
+    logging::Info("hooks     device %p, Reset %s, Present %s", static_cast<void*>(dev), reset, present);
 }
 
 void __cdecl OnInitPresent() {
+    logging::Section("d3d device");
     window::ApplyBorderless();
     ForcePresentParams();
 }

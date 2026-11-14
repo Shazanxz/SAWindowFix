@@ -48,6 +48,7 @@ void Report(const EXCEPTION_POINTERS* ep, const char* name) {
         lstrcpyA(where, "no module");
     }
 
+    logging::Section("crash");
     logging::Error("%s (0x%08lX) at 0x%08X [%s], thread %lu (first-chance, may still be handled)", name,
                    rec->ExceptionCode, addr, where, GetCurrentThreadId());
     if (rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && rec->NumberParameters >= 2) {

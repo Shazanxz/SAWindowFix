@@ -93,8 +93,9 @@ void ApplyBorderless() {
 
     static unsigned applied = 0;
     if (++applied <= 50) {
-        logging::Info("borderless window: %ldx%ld at (%ld,%ld), style %08lX -> %08lX, exstyle %08lX -> %08lX",
-                      mon.right - mon.left, mon.bottom - mon.top, mon.left, mon.top, style, newStyle, exStyle,
+        logging::Info("window    borderless %ldx%ld at (%ld,%ld)", mon.right - mon.left, mon.bottom - mon.top,
+                      mon.left, mon.top);
+        logging::Info("          style %08lX -> %08lX, exstyle %08lX -> %08lX", style, newStyle, exStyle,
                       newExStyle);
     } else if (applied == 51) {
         logging::Warn("borderless window re-applied 50 times; something keeps changing the window, not logging further");
@@ -109,7 +110,7 @@ void InstallWndProcHook() {
     g_wndProcOri = reinterpret_cast<WNDPROC>(
         SetWindowLongPtrA(wnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&WndProcHook)));
     if (g_wndProcOri) {
-        logging::Info("window procedure hooked");
+        logging::Info("hooks     window procedure");
     } else {
         logging::Warn("could not hook the window procedure (error %lu)", GetLastError());
     }
